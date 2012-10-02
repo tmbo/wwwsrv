@@ -22,10 +22,10 @@ class App extends unfiltered.filter.Plan {
 object Server {
   val logger = Logger(Server.getClass)
   def main(args: Array[String]) {
-    if(args.size < 1)
-      throw new RuntimeException("Please pass the www dir.")
-    val http = unfiltered.jetty.Http.anylocal // this will not be necessary in 0.4.0
-    http.context("/") { _.resources(new java.net.URL("file://"+args(0))) }
+    if(args.size < 2)
+      throw new RuntimeException("Please pass the port and www dir.")
+    val http = unfiltered.jetty.Http.local(args(0).toInt) // this will not be necessary in 0.4.0
+    http.context("/") { _.resources(new java.net.URL("file://"+args(1))) }
       .run({ svr =>
         unfiltered.util.Browser.open(http.url)
       }, { svr =>
