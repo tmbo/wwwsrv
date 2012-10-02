@@ -22,11 +22,16 @@ class App extends unfiltered.filter.Plan {
 object Server {
   val logger = Logger(Server.getClass)
   def main(args: Array[String]) {
+    println("---")
+args foreach println
+println("---")
     if(args.size < 2)
       throw new RuntimeException("Please pass the port and www dir.")
     val http = unfiltered.jetty.Http.local(args(0).toInt) // this will not be necessary in 0.4.0
-    http.context("/") { _.resources(new java.net.URL("file://"+args(1))) }
-      .run({ svr =>
+    http.context("/") { x =>
+        x.resources(new java.net.URL("file://"+args(1)))
+        x.current.setAliases(true)  
+      }.run({ svr =>
         unfiltered.util.Browser.open(http.url)
       }, { svr =>
         logger.info("shutting down server")
