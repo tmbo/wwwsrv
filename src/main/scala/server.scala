@@ -23,6 +23,7 @@ object Server {
   val logger = Logger(Server.getClass)
   def main(args: Array[String]) {
     println("---")
+    java.lang.management.ManagementFactory.getRuntimeMXBean().getName()
 args foreach println
 println("---")
     if(args.size < 2)
