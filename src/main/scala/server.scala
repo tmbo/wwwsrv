@@ -2,6 +2,8 @@ package com.example
 
 import unfiltered.request._
 import unfiltered.response._
+import scala.io._
+import java.io._
 
 import org.clapper.avsl.Logger
 
@@ -20,17 +22,31 @@ class App extends unfiltered.filter.Plan {
 
 /** embedded server */
 object Server {
+  val PIDFILENAME = "RUNNING_PID"
   val logger = Logger(Server.getClass)
+
+def writePidInfoToFile(fileName: String) {
+  val pidInfo = java.lang.management.ManagementFactory.getRuntimeMXBean().getName().split("@")
+  if(pidInfo.size < 2)
+    throw new RuntimeException("Couldn't write pid to file.")
+  println("PID: " + pidInfo(0))
+  val file = new File(fileName)
+  file.delete
+  val out = new PrintWriter( file )
+  try{ out.print( pidInfo(0) ) }
+  finally{ out.close }
+}
+
   def main(args: Array[String]) {
     println("---")
-    java.lang.management.ManagementFactory.getRuntimeMXBean().getName()
-args foreach println
-println("---")
-    if(args.size < 2)
-      throw new RuntimeException("Please pass the port and www dir.")
+    writePidInfoToFile(args(1) + "/" + PIDFILENAME)
+    args foreach println
+    println("---")
+    if(args.size < 3)
+      throw new RuntimeException("Please pass the port, dir and www dir.")
     val http = unfiltered.jetty.Http.local(args(0).toInt) // this will not be necessary in 0.4.0
     http.context("/") { x =>
-        x.resources(new java.net.URL("file://"+args(1)))
+        x.resources(new java.net.URL("file://"+args(1) + args(2)))
         x.current.setAliases(true)  
       }.run({ svr =>
         unfiltered.util.Browser.open(http.url)
