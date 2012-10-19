@@ -53,7 +53,7 @@ object Server {
 
   def main(args: Array[String]) {
     if (args.size < 3)
-      throw new RuntimeException("Please pass the port, dir and www dir.")
+      throw new RuntimeException("Please pass the port, imageAssetsDir and wwwDir.")
     println("---")
     writePidInfoToFile(args(1) + "/" + PIDFILENAME)
     args foreach println
