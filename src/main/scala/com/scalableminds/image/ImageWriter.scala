@@ -6,7 +6,7 @@ import javax.imageio._
 import javax.imageio.stream._
 import java.awt.image.BufferedImage
 
-object ImageWriter {
+class ImageWriter {
   val imageQuality = 0.8F
   val iter = ImageIO.getImageWritersByFormatName("jpeg")
   val writer = iter.next()

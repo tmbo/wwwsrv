@@ -4,7 +4,7 @@ import java.io.File
 import java.awt.image.BufferedImage
 import javax.imageio.ImageIO
 
-object ImageCompressor {
+class ImageCompressor {
   def compress(images: Array[File]) = {
     if (images.isEmpty) {
       println("ImageCompressor called with no images!!!")

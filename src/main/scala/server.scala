@@ -27,10 +27,10 @@ object Server {
             .zipWithIndex
             .map {
               case (is, idx) =>
-                ImageCompressor.compress(is).map { compressed =>
+                (new ImageCompressor).compress(is).map { compressed =>
                   val path = dir.getAbsolutePath + ("/compressed%d.jpg".format(idx))
                   println("saving to " + path)
-                  ImageWriter.asJPGToFile(compressed, path)
+                  (new ImageWriter).asJPGToFile(compressed, path)
                 }
             }
         case (true, directories) =>
