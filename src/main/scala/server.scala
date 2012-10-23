@@ -34,11 +34,11 @@ object Server {
                 }
             }
         case (true, directories) =>
-          directories foreach compressAllImages
-      }  
+          directories.par.foreach(compressAllImages)
+      }
     }
   }
-  
+
   def writePidInfoToFile(fileName: String) {
     val pidInfo = java.lang.management.ManagementFactory.getRuntimeMXBean().getName().split("@")
     if (pidInfo.size < 2)
@@ -56,16 +56,16 @@ object Server {
       throw new RuntimeException("Please pass the port, imageAssetsDir and wwwDir.")
     println("---")
     writePidInfoToFile(args(1) + "/" + PIDFILENAME)
-    args foreach println
+    println("Assets folder: " + args(1))
+    println("Shellgame folder: " + args(2))
     println("---")
-    
+
     println("Compressing images...")
     compressAllImages(new File(args(1)))
     println("Done compressing.")
-    
+
     val mainAssets = new java.net.URL("file:" + args(2))
     val imageAssets = new java.net.URL("file:" + args(1))
-    println("ass: " + imageAssets)
 
     val indexSupplier = unfiltered.netty.cycle.Planify {
       case GET(Path("/")) => Redirect("index.html")
