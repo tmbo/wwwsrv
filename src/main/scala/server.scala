@@ -9,34 +9,75 @@ import unfiltered.request.Path
 import unfiltered.response.Redirect
 import com.scalableminds.image.ImageCompressor
 import com.scalableminds.image.ImageWriter
+import java.awt.image.BufferedImage
 
 /** embedded server */
+object FileMapper {
+  def serializeMapping(mapping: Map[String, Array[String]]) = {
+    import net.liftweb.json._
+    import net.liftweb.json.JsonDSL._
+    import net.liftweb.json.Serialization.{ read, write }
+    implicit val formats = Serialization.formats(NoTypeHints)
+    write(mapping)
+  }
+
+  def writeToFile(mapping: Map[String, Array[String]], fileName: String) {
+    println("Writing file mapping to '%s'".format(fileName))
+    val file = new File(fileName)
+    val out = new PrintWriter(file)
+    try { out.print(serializeMapping(mapping)) }
+    finally { out.close }
+  }
+}
+
 object Server {
   val PIDFILENAME = "RUNNING_PID"
   val logger = Logger(Server.getClass)
+  val fileMappingPath = "filemap.json"
+  val compressedFilePathTemplate = "compressed%d.jpg"
 
-  def compressAllImages(dir: File) {
-    if (dir.isDirectory()) {
-      dir.listFiles.groupBy(_.isDirectory).map {
-        case (false, images) =>
-          images
-            .filter(i => i.getName().endsWith(".jpg") && !i.getName().contains("compressed"))
-            .sortBy(_.getName)
-            .sliding(100, 100)
-            .toSeq
-            .zipWithIndex
-            .map {
-              case (is, idx) =>
-                (new ImageCompressor).compress(is).map { compressed =>
-                  val path = dir.getAbsolutePath + ("/compressed%d.jpg".format(idx))
-                  println("saving to " + path)
-                  (new ImageWriter).asJPGToFile(compressed, path)
-                }
-            }
-        case (true, directories) =>
-          directories.par.foreach(compressAllImages)
-      }
+  def anonymifyFileName(fileName: String)(implicit rootDir: File) =
+    fileName.replace(rootDir.getAbsolutePath, "")
+
+  def writeCompressedImageToFile(parentDir: String)(compressed: BufferedImage, idx: Int) = {
+    val path = parentDir + "/" + compressedFilePathTemplate.format(idx)
+    println("saving to " + path)
+    (new ImageWriter).asJPGToFile(compressed, path)
+    path
+  }
+
+  def processImageStack(parentDir: String)(is: Tuple2[Array[File], Int])(implicit rootDir: File) = {
+    (new ImageCompressor).compress(is._1).map { compressed =>
+      val path = writeCompressedImageToFile(parentDir)(compressed, is._2)
+      Map(anonymifyFileName(path) -> is._1.map(f => anonymifyFileName(f.getAbsolutePath)))
+    } getOrElse (Map[String, Array[String]]())
+  }
+
+  def compressAllImages(dir: File): Map[String, Array[String]] = {
+    implicit val rootDir = dir
+    
+    def compress(dir: File): Map[String, Array[String]] = {
+      if (dir.isDirectory()) {
+        dir.listFiles.groupBy(_.isDirectory).map {
+          case (false, images) =>
+            images
+              .filter(i => i.getName().endsWith(".jpg") && !i.getName().contains("compressed"))
+              .sortBy(_.getName)
+              .sliding(100, 100)
+              .toList
+              .zipWithIndex
+              .map(processImageStack(dir.getAbsolutePath))
+          case (true, directories) =>
+            directories
+              .par
+              .map(compressAllImages)
+              .toList
+        }.flatten.foldLeft(Map[String, Array[String]]())((m, e) => m ++ e)
+      } else
+        Map[String, Array[String]]()
     }
+    
+    compress(dir)
   }
 
   def writePidInfoToFile(fileName: String) {
@@ -51,21 +92,30 @@ object Server {
     finally { out.close }
   }
 
-  def main(args: Array[String]) {
+  def verifyArguments(args: Array[String]) {
     if (args.size < 3)
       throw new RuntimeException("Please pass the port, imageAssetsDir and wwwDir.")
+  }
+
+  def main(args: Array[String]) {
+    verifyArguments(args)
+
     println("---")
     writePidInfoToFile(args(1) + "/" + PIDFILENAME)
     println("Assets folder: " + args(1))
     println("Shellgame folder: " + args(2))
     println("---")
 
+    val imageFolderPath = if (args(1).endsWith("/")) args(1) else args(1) + "/"
+    val mainFolderPath = if (args(2).endsWith("/")) args(2) else args(2) + "/"
+
     println("Compressing images...")
-    compressAllImages(new File(args(1)))
+    val fileMapping = compressAllImages(new File(imageFolderPath))
+    FileMapper.writeToFile(fileMapping, imageFolderPath + fileMappingPath)
     println("Done compressing.")
 
-    val mainAssets = new java.net.URL("file:" + args(2))
-    val imageAssets = new java.net.URL("file:" + args(1))
+    val imageAssets = new java.net.URL("file:" + imageFolderPath)
+    val mainAssets = new java.net.URL("file:" + mainFolderPath)
 
     val indexSupplier = unfiltered.netty.cycle.Planify {
       case GET(Path("/")) => Redirect("index.html")
