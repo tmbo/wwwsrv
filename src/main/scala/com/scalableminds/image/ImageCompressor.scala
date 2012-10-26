@@ -16,7 +16,7 @@ class ImageCompressor {
       val imageType = bufferedImages(0).getType()
       val depth = bufferedImages.size
       
-      val finalImage = new BufferedImage(width, height * depth, BufferedImage.TYPE_INT_ARGB)
+      val finalImage = new BufferedImage(width, height * depth, BufferedImage.TYPE_INT_RGB)
 
       bufferedImages.zipWithIndex.foreach {
         case (image, idx) =>
