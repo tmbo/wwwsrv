@@ -47,6 +47,7 @@ object Server {
   }
 
   def processImageStack(parentDir: String)(is: Tuple2[Array[File], Int])(implicit rootDir: File) = {
+    println("Rootdir: " + rootDir + " ParentDir: " + parentDir)
     (new ImageCompressor).compress(is._1).map { compressed =>
       val path = writeCompressedImageToFile(parentDir)(compressed, is._2)
       Map(anonymifyFileName(path) -> is._1.map(f => anonymifyFileName(f.getAbsolutePath)))
@@ -70,13 +71,12 @@ object Server {
           case (true, directories) =>
             directories
               .par
-              .map(compressAllImages)
+              .map(compress)
               .toList
         }.flatten.foldLeft(Map[String, Array[String]]())((m, e) => m ++ e)
       } else
         Map[String, Array[String]]()
     }
-    
     compress(dir)
   }
 
