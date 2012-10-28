@@ -64,7 +64,7 @@ object Server {
             images
               .filter(i => i.getName().endsWith(".jpg") && !i.getName().contains("compressed"))
               .sortBy(_.getName)
-              .sliding(100, 100)
+              .sliding(13, 13)
               .toList
               .zipWithIndex
               .map(processImageStack(dir.getAbsolutePath))
