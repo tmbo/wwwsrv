@@ -4,12 +4,11 @@ import unfiltered.netty._
 import scala.io._
 import java.io._
 import org.clapper.avsl.Logger
-import unfiltered.request.GET
-import unfiltered.request.Path
-import unfiltered.response.Redirect
+import unfiltered.response._
 import com.scalableminds.image.ImageCompressor
 import com.scalableminds.image.ImageWriter
 import java.awt.image.BufferedImage
+import unfiltered.request._
 
 /** embedded server */
 object FileMapper {
@@ -47,7 +46,6 @@ object Server {
   }
 
   def processImageStack(parentDir: String)(is: Tuple2[Array[File], Int])(implicit rootDir: File) = {
-    println("Rootdir: " + rootDir + " ParentDir: " + parentDir)
     (new ImageCompressor).compress(is._1).map { compressed =>
       val path = writeCompressedImageToFile(parentDir)(compressed, is._2)
       Map(anonymifyFileName(path) -> is._1.map(f => anonymifyFileName(f.getAbsolutePath)))
@@ -56,7 +54,7 @@ object Server {
 
   def compressAllImages(dir: File): Map[String, Array[String]] = {
     implicit val rootDir = dir
-    
+
     def compress(dir: File): Map[String, Array[String]] = {
       if (dir.isDirectory()) {
         dir.listFiles.groupBy(_.isDirectory).map {
@@ -87,9 +85,24 @@ object Server {
     println("PID: " + pidInfo(0))
     val file = new File(fileName)
     file.delete
-    val out = new PrintWriter(file)
-    try { out.print(pidInfo(0)) }
-    finally { out.close }
+    writeToFile(file, pidInfo(0), false)
+  }
+
+  def writeToFile(fileName: String, content: String, append: Boolean = true): Boolean = {
+    writeToFile(new File(fileName), content, append)
+  }
+
+  def writeToFile(file: File, content: String, append: Boolean): Boolean = {
+    try {
+      val fw = new FileWriter(file, append)
+      fw.write(content)
+      fw.close()
+      true
+    } catch {
+      case e: java.io.FileNotFoundException =>
+        println("Writing to file failed: " + e.getMessage())
+        false
+    }
   }
 
   def verifyArguments(args: Array[String]) {
@@ -106,6 +119,8 @@ object Server {
     println("Shellgame folder: " + args(2))
     println("---")
 
+    val LOG_FILES_ROOT = args(1) + "/userlogs"
+
     val imageFolderPath = if (args(1).endsWith("/")) args(1) else args(1) + "/"
     val mainFolderPath = if (args(2).endsWith("/")) args(2) else args(2) + "/"
 
@@ -119,6 +134,21 @@ object Server {
 
     val indexSupplier = unfiltered.netty.cycle.Planify {
       case GET(Path("/")) => Redirect("index.html")
+      case POST(Path(Seg("log" :: id :: Nil)) & Params(params)) =>
+        if (id.matches("^[a-zA-Z0-9]*$")) {
+          println(params)
+          params.get("log") match {
+            case Some(log) =>
+              if (writeToFile("%s/%s.log".format(LOG_FILES_ROOT, id), log.mkString("", "\n", "\n")))
+                Ok
+              else
+                BadRequest ~> ResponseString("Write to file failed.")
+            case _ =>
+              BadRequest ~> ResponseString("'log' parameter missing.")
+          }
+        } else {
+          BadRequest ~> ResponseString("Invalid id.")
+        }
     }
 
     val http = unfiltered.netty.Http.local(args(0).toInt) // this will not be necessary in 0.4.0
