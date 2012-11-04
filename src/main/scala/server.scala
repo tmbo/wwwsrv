@@ -121,6 +121,8 @@ object Server {
 
     val LOG_FILES_ROOT = args(1) + "/userlogs"
 
+    new File(LOG_FILES_ROOT).mkdirs
+
     val imageFolderPath = if (args(1).endsWith("/")) args(1) else args(1) + "/"
     val mainFolderPath = if (args(2).endsWith("/")) args(2) else args(2) + "/"
 
