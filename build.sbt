@@ -2,7 +2,7 @@ organization := "com.example"
 
 name := "wwwsrv"
 
-version := "0.1.0-SNAPSHOT"
+version := "0.2.0-SNAPSHOT"
 
 libraryDependencies ++= Seq(
   "net.databinder" %% "unfiltered-filter" % "0.6.4",
